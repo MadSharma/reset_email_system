@@ -152,7 +152,6 @@ class AdminController extends Controller
             return true;
         } catch (Exception $e) {
             error_log('PHPMailer Error: ' . $e->getMessage()); // Log the error message
-            dd($e);
             return false;
         }
     }
