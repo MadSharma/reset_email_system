@@ -1,13 +1,16 @@
 <?php
 
+namespace App\helpers;
+
 class constGuards
 {
-    const ADMIN ='admin';
-    const CLIENT ='client';
-    const SELLER ='seller';
+    const ADMIN = 'admin';
+    const CLIENT = 'client';
+    const SELLER = 'seller';
 }
 
 class constDefaults
 {
     const tokenExpiredMinutes = 15;
 }
+

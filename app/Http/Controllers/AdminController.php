@@ -12,6 +12,8 @@ use Illuminate\Support\Carbon;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
+use App\helpers\constGuards;
+use App\helpers\constDefaults;
 
 class AdminController extends Controller
 {
@@ -151,8 +153,94 @@ class AdminController extends Controller
     
             return true;
         } catch (Exception $e) {
-            error_log('PHPMailer Error: ' . $e->getMessage()); // Log the error message
+            error_log('PHPMailer Error: ' . $e->getMessage()); 
             return false;
         }
     }
+
+    public function resetPassword(Request $request, $token, $email)
+    {
+        
+        $check_token = DB::table('password_reset_tokens')
+            ->where(['token' => $token, 'guard' => constGuards::ADMIN])
+            ->first();
+            // dd($check_token);
+
+        if ($check_token) {
+            $diffMins = Carbon::createFromFormat('Y-m-d H:i:s', $check_token->created_at)->diffInMinutes(Carbon::now());
+
+            if ($diffMins > constDefaults::tokenExpiredMinutes) {
+                session()->flash('fail', 'Token expired! Please request another password reset link.');
+                return redirect()->route('admin.forgot-password', ['token' => $token]);
+            } else {
+                return view('back.pages.admin.auth.reset-password')->with(['token' => $token]);
+            }
+        } else {
+            session()->flash('fail', 'Invalid token! Please request another password reset link.');
+            return redirect()->route('admin.forgot-password', ['token' => $token]);
+        }       
+    }
+
+    public function resetPasswordHandler(Request $request)
+{
+    $request->validate([
+        'new_password' => 'required|min:5|max:45|required_with:new_password_confirmation|same:new_password_confirmation',
+        'new_password_confirmation' => 'required'
+    ]);
+
+    // Get token details
+    $token = DB::table('password_reset_tokens')
+        ->where(['token' => $request->token, 'guard' => constGuards::ADMIN])
+        ->first();
+
+    if (!$token) {
+        session()->flash('fail', 'Invalid token! Please request another password reset link.');
+        return redirect()->route('admin.forgot-password', ['token' => $request->token]);
+    }
+
+    // Get admin details
+    $admin = Admin::where('email', $token->email)->first();
+
+    // Update admin password
+    Admin::where('email', $admin->email)->update([
+        'password' => Hash::make($request->new_password)
+    ]);
+
+    // Delete token record
+    DB::table('password_reset_tokens')->where([
+        'email' => $admin->email,
+        'token' => $request->token,
+        'guard' => constGuards::ADMIN
+    ])->delete();
+
+    // Send email to notify admin
+    $data = array(
+        'admin' => $admin,
+        'new_password' => $request->new_password
+    );
+
+    $mail_body = view('email-templates.admin-reset-email-template', $data)->render();
+
+    $mail_config = array(
+        'mail_form_email' => env('MAIL_FROM_ADDRESS'),
+        'mail_form_name' => env('MAIL_FROM_NAME'), 
+        'mail_recipient_email' => $admin->email,
+        'mail_recipient_name' => $admin->name,     
+        'mail_subject' => 'Password Changed',
+        'mail_body' => $mail_body
+    );
+    
+
+    $this->sendEmail($mail_config);
+
+    session()->flash('success', 'Your password has been changed. Use the new password to log in.');
+    return redirect()->route('admin.login');
 }
+
+}
+
+// $token = $request->input('token');
+        // echo "<pre>";
+        // print_r($request);
+        // echo "</pre>";
+        // dd($token);
