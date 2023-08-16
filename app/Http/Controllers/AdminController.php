@@ -182,60 +182,70 @@ class AdminController extends Controller
     }
 
     public function resetPasswordHandler(Request $request)
-{
-    $request->validate([
-        'new_password' => 'required|min:5|max:45|required_with:new_password_confirmation|same:new_password_confirmation',
-        'new_password_confirmation' => 'required'
-    ]);
+    {
+        $request->validate([
+            'new_password' => 'required|min:5|max:45|required_with:new_password_confirmation|same:new_password_confirmation',
+            'new_password_confirmation' => 'required'
+        ]);
 
-    // Get token details
-    $token = DB::table('password_reset_tokens')
-        ->where(['token' => $request->token, 'guard' => constGuards::ADMIN])
-        ->first();
+        // Get token details
+        $token = DB::table('password_reset_tokens')
+            ->where(['token' => $request->token, 'guard' => constGuards::ADMIN])
+            ->first();
 
-    if (!$token) {
-        session()->flash('fail', 'Invalid token! Please request another password reset link.');
-        return redirect()->route('admin.forgot-password', ['token' => $request->token]);
+        if (!$token) {
+            session()->flash('fail', 'Invalid token! Please request another password reset link.');
+            return redirect()->route('admin.forgot-password', ['token' => $request->token]);
+        }
+
+        // Get admin details
+        $admin = Admin::where('email', $token->email)->first();
+
+        // Update admin password
+        Admin::where('email', $admin->email)->update([
+            'password' => Hash::make($request->new_password)
+        ]);
+
+        // Delete token record
+        DB::table('password_reset_tokens')->where([
+            'email' => $admin->email,
+            'token' => $request->token,
+            'guard' => constGuards::ADMIN
+        ])->delete();
+
+        // Send email to notify admin
+        $data = array(
+            'admin' => $admin,
+            'new_password' => $request->new_password
+        );
+
+        $mail_body = view('email-templates.admin-reset-email-template', $data)->render();
+
+        $mail_config = array(
+            'mail_form_email' => env('MAIL_FROM_ADDRESS'),
+            'mail_form_name' => env('MAIL_FROM_NAME'), 
+            'mail_recipient_email' => $admin->email,
+            'mail_recipient_name' => $admin->name,     
+            'mail_subject' => 'Password Changed',
+            'mail_body' => $mail_body
+        );
+        
+
+        $this->sendEmail($mail_config);
+
+        session()->flash('success', 'Your password has been changed. Use the new password to log in.');
+        return redirect()->route('admin.login');
     }
 
-    // Get admin details
-    $admin = Admin::where('email', $token->email)->first();
+    public function profileView(Request $request){
+        $admin =null;
+        if (Auth::guard('admin')->check() ){
+            $admin =Admin::findOrFail(auth()->id());
+        } 
+        return view('back.pages.admin.profile',compact('admin'));
+    }
 
-    // Update admin password
-    Admin::where('email', $admin->email)->update([
-        'password' => Hash::make($request->new_password)
-    ]);
 
-    // Delete token record
-    DB::table('password_reset_tokens')->where([
-        'email' => $admin->email,
-        'token' => $request->token,
-        'guard' => constGuards::ADMIN
-    ])->delete();
-
-    // Send email to notify admin
-    $data = array(
-        'admin' => $admin,
-        'new_password' => $request->new_password
-    );
-
-    $mail_body = view('email-templates.admin-reset-email-template', $data)->render();
-
-    $mail_config = array(
-        'mail_form_email' => env('MAIL_FROM_ADDRESS'),
-        'mail_form_name' => env('MAIL_FROM_NAME'), 
-        'mail_recipient_email' => $admin->email,
-        'mail_recipient_name' => $admin->name,     
-        'mail_subject' => 'Password Changed',
-        'mail_body' => $mail_body
-    );
-    
-
-    $this->sendEmail($mail_config);
-
-    session()->flash('success', 'Your password has been changed. Use the new password to log in.');
-    return redirect()->route('admin.login');
-}
 
 }
 

@@ -46,4 +46,13 @@ class Admin extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function getPictureAttribute($value){
+        if($value){
+            return asset('images/users/admins'.$value);
+        } 
+        else {
+            return asset('images/users/default-avatar.png');
+        }
+    }
 }

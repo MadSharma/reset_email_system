@@ -19,7 +19,7 @@ class Authenticate extends Middleware
         }
     }
 
-    return route('login'); // Default redirection for non-JSON requests
+    return route('admin.login'); // Default redirection for non-JSON requests
 }
 
 }
