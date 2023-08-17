@@ -5,12 +5,14 @@ namespace App\Http\Livewire;
 use Livewire\Component;
 use App\Models\Admin;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class AdminProfileTabs extends Component
 {
     public $tab = 'personal_details'; // Default tab
     protected $queryString = ['tab'];
     public $name, $email, $username, $admin_id;
+    public $current_password, $new_password, $new_password_confirmation; // Corrected property name
 
     public function selectTab($selectedTab)
     {
@@ -28,11 +30,12 @@ class AdminProfileTabs extends Component
         }
     }
 
-    public function updateAdminPersonDetails(){
+    public function updateAdminPersonDetails()
+    {
         $this->validate([
             'name' => 'required|min:5',
-            'email' => 'required|email|unique:admins,email,'.$this->admin_id,
-            'username' => 'required|min:3|unique:admins,username,'.$this->admin_id,
+            'email' => 'required|email|unique:admins,email,' . $this->admin_id,
+            'username' => 'required|min:3|unique:admins,username,' . $this->admin_id,
         ]);
 
         Admin::find($this->admin_id)->update([
@@ -42,16 +45,41 @@ class AdminProfileTabs extends Component
         ]);
 
         $this->emit('updateAdminSellerHeaderInfo');
-        $this->dispatchBrowserEvent('updateAdminInfo',[
-            'adminName' =>$this->name,
-            'adminEmail' =>$this->email
-
+        $this->dispatchBrowserEvent('updateAdminInfo', [
+            'adminName' => $this->name,
+            'adminEmail' => $this->email
         ]);
         $this->showToastr('success', 'Your personal details have been successfully updated.');
     }
 
-    public function showToastr($type, $message){
-        return $this->dispatchBrowserEvent('showToastr',[
+    public function updatePassword()
+    {
+        $this->validate([
+            'current_password' => [
+                'required', function ($attribute, $value, $fail) {
+                    if (!Hash::check($value, Admin::find(auth('admin')->id())->password)) {
+                        return $fail(__('The current password is incorrect'));
+                    }
+                }
+            ],
+            'new_password' => 'required|min:5|max:45|confirmed'
+        ]);
+        
+        $query =Admin::findOrFail(auth('admin')->id())->update([
+            'password' =>Hash::make($this->new_password)
+        ]);
+
+        if($query){
+            $this->current_password = $this->new_password =  $this->new_password_comfirmation =null;
+            $this->showToastr('success', 'Your Password Updated Successfully.');
+        }else{
+            $this->showToastr('error', 'something went wrong.');
+        }
+    }
+
+    public function showToastr($type, $message)
+    {
+        return $this->dispatchBrowserEvent('showToastr', [
             'type' => $type,
             'message' => $message
         ]);

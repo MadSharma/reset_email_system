@@ -14,6 +14,9 @@ use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 use App\helpers\constGuards;
 use App\helpers\constDefaults;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
+use App\Events\UpdateAdminInfoEvent;
 
 class AdminController extends Controller
 {
@@ -245,12 +248,42 @@ class AdminController extends Controller
         return view('back.pages.admin.profile',compact('admin'));
     }
 
+    public function changeProfilePicture(Request $request)
+    {
+        try {
+            $admin = Admin::findOrFail(auth('admin')->id());
+            $path = 'images/users/admins';
+            $file = $request->file('adminProfilePictureFile'); // Ensure you have proper file validation
 
+            if (!$file) {
+                throw new \Exception('No file uploaded.');
+            }
+            $old_picture = $admin->getAttributes()['picture'];
+            $file_path = public_path($path . $old_picture);
 
+            $filename = 'ADMIN_IMG' . rand(2, 1000) . $admin->id . time() . uniqid() . '.jpg';
+
+            $upload = $file->move(public_path($path), $filename);
+
+            if (!$upload) {
+                throw new \Exception('File upload failed.');
+            }
+
+            if ($old_picture != null && File::exists($file_path)) {
+                File::delete($file_path); // Delete the old picture
+            }
+
+            // Update the admin's profile picture in the database
+            $admin->update(['picture' => $filename]);
+            dd($filename);
+            // Dispatch an event to notify frontend about the updated admin info
+            event(new UpdateAdminInfoEvent($admin->name, $admin->email));
+
+            return response()->json(['status' => 1, 'msg' => 'Your profile picture has been updated successfully.']); 
+        }
+         catch (\Exception $e) {
+            Log::error('Error in changeProfilePicture: ' . $e->getMessage());
+            return response()->json(['status' => 0, 'msg' => 'Something went wrong during image processing.']);
+        }
+    }
 }
-
-// $token = $request->input('token');
-        // echo "<pre>";
-        // print_r($request);
-        // echo "</pre>";
-        // dd($token);

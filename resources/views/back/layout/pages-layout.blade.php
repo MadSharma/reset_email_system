@@ -60,22 +60,11 @@
 			})(window, document, "script", "dataLayer", "GTM-NXZMQSS");
 		</script>
 		<!-- End Google Tag Manager -->
+		<link rel="stylesheet" href="/extra-assets/ijaboCropTool/ijaboCropTool.min.css">
 		@livewireStyles
     @stack('stylesheets')
 	</head>
 	<body>
-		{{-- <div class="pre-loader">
-			<div class="pre-loader-box">
-				<div class="loader-logo">
-					<img src="/back/vendors/images/deskapp-logo.svg" alt="" />
-				</div>
-				<div class="loader-progress" id="progress_div">
-					<div class="bar" id="bar1"></div>
-				</div>
-				<div class="percent" id="percent1">0%</div>
-				<div class="loading-text">Loading...</div>
-			</div>
-		</div> --}}
 
 		<div class="header">
 			<div class="header-left">
@@ -510,6 +499,7 @@
 		<!-- js -->
 		<script src="/back/vendors/scripts/core.js"></script>
 		<script src="/back/vendors/scripts/script.min.js"></script>
+		<script src="/extra-assets/ijaboCropTool/ijaboCropTool.min.js"></script>
 		<script src="/back/vendors/scripts/process.js"></script>
 		<script src="/back/vendors/scripts/layout-settings.js"></script>
 		<script>
